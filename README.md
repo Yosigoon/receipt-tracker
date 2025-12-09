@@ -1,6 +1,9 @@
-# 📸 영수증 자동 가계부 - 완벽 가이드
+<img width="833" height="698" alt="receipt_main" src="https://github.com/user-attachments/assets/ef9497bf-47a5-4e46-820c-5ea9ccf5c1d8" /># 📸 영수증 자동 가계부 - 완벽 가이드
 
 영수증을 촬영하면 자동으로 구글 시트 가계부에 기록되는 시스템 구축 가이드입니다.
+
+<img width="833" height="698" alt="receipt_main" src="https://github.com/user-attachments/assets/76c51fd5-ee83-4a35-92eb-1b67e859fe4d" />
+
 
 ---
 
