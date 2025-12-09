@@ -17,7 +17,7 @@
 11. [문제 해결](#문제-해결)
 
 <img width="500" height="398" alt="receipt_main" src="https://github.com/user-attachments/assets/76c51fd5-ee83-4a35-92eb-1b67e859fe4d" />
-<img width="500" height="329" alt="sheets" src="https://github.com/user-attachments/assets/93b2dabc-376e-41f6-a70b-b021c2d74a1b" />
+<img width="500" height="398" alt="sheets" src="https://github.com/user-attachments/assets/93b2dabc-376e-41f6-a70b-b021c2d74a1b" />
 
 
 ---
