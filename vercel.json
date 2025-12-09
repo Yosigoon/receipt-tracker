@@ -3,9 +3,5 @@
     "api/analyze.js": {
       "maxDuration": 30
     }
-  },
-  "env": {
-    "GOOGLE_SHEETS_ID": "@google_sheets_id",
-    "GOOGLE_SERVICE_ACCOUNT": "@google_service_account"
   }
 }
