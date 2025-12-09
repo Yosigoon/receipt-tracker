@@ -1,6 +1,5 @@
 영수증을 촬영하면 자동으로 구글 시트 가계부에 기록되는 시스템 구축 가이드입니다.
 
-<img width="633" height="498" alt="receipt_main" src="https://github.com/user-attachments/assets/76c51fd5-ee83-4a35-92eb-1b67e859fe4d" />
 ---
 
 ## 📋 목차
@@ -16,6 +15,9 @@
 9. [Vercel 배포](#vercel-배포)
 10. [도메인 연결](#도메인-연결)
 11. [문제 해결](#문제-해결)
+
+<img width="633" height="498" alt="receipt_main" src="https://github.com/user-attachments/assets/76c51fd5-ee83-4a35-92eb-1b67e859fe4d" />
+
 
 ---
 
