@@ -170,8 +170,8 @@ git --version
 
 URL에서 시트 ID 복사:
 ```
-https://docs.google.com/spreadsheets/d/1a2b3c4d5e6f7g8h9i0j/edit
-                                      ↑ 이 부분이 시트 ID
+https://docs.google.com/spreadsheets/d/{1a2b3c4d5e6f7g8h9i0j}/edit
+                                           ↑ {} 이 부분이 시트 ID
 ```
 
 시트 ID를 메모장에 저장해두세요!
