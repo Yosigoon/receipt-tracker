@@ -1,15 +1,10 @@
-// api/analyze.js - Vercel Serverless Function (Google Vision)
+// api/analyze.js - Google Vision (최종 수정 버전)
 const { google } = require('googleapis');
 const vision = require('@google-cloud/vision');
 const formidable = require('formidable');
 const fs = require('fs');
 
-// 환경변수 필요:
-// - GOOGLE_SHEETS_ID: 구글 시트 ID
-// - GOOGLE_SERVICE_ACCOUNT: 서비스 계정 JSON (전체 내용)
-
 module.exports = async (req, res) => {
-    // CORS 설정
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -23,7 +18,6 @@ module.exports = async (req, res) => {
     }
 
     try {
-        // 1. 파일 파싱 - formidable v3 방식
         const form = new formidable.IncomingForm({
             multiples: false,
             keepExtensions: true
@@ -40,29 +34,29 @@ module.exports = async (req, res) => {
             });
         });
 
-        // formidable v3에서는 배열로 반환됨
         const receiptFile = Array.isArray(files.receipt) ? files.receipt[0] : files.receipt;
+
         if (!receiptFile) {
             console.error('No receipt file found:', files);
             return res.status(400).json({ error: '영수증 이미지가 필요합니다.' });
         }
 
-        console.log('Receipt file:', receiptFile.filepath || receiptFile.path);
+        const filePath = receiptFile.filepath || receiptFile.path;
+        console.log('Receipt file:', filePath);
 
-        // 2. Google Vision API로 OCR 수행
         const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
         console.log('Credentials loaded, project:', credentials.project_id);
+
         const client = new vision.ImageAnnotatorClient({
             credentials: credentials
         });
 
-        // formidable v3에서는 filepath 대신 path 사용 가능
-        const filePath = receiptFile.filepath || receiptFile.path;
         const imageBuffer = fs.readFileSync(filePath);
         console.log('Image buffer size:', imageBuffer.length);
 
         const [result] = await client.textDetection(imageBuffer);
         console.log('Vision API response received');
+
         const detections = result.textAnnotations;
 
         if (!detections || detections.length === 0) {
@@ -72,13 +66,10 @@ module.exports = async (req, res) => {
 
         const fullText = detections[0].description;
         console.log('Detected text length:', fullText.length);
-        console.log('Detected text preview:', fullText.substring(0, 200));
 
-        // 3. 텍스트 파싱 (간단한 규칙 기반)
         const receiptData = parseReceiptText(fullText);
         console.log('Parsed receipt data:', receiptData);
 
-        // 4. Google Sheets에 데이터 추가
         const auth = new google.auth.GoogleAuth({
             credentials: credentials,
             scopes: ['https://www.googleapis.com/auth/spreadsheets'],
@@ -104,7 +95,6 @@ module.exports = async (req, res) => {
 
         console.log('Successfully added to sheet');
 
-        // 5. 성공 응답
         res.status(200).json({
             success: true,
             message: '가계부에 기록되었습니다.',
@@ -120,76 +110,167 @@ module.exports = async (req, res) => {
     }
 };
 
-// 영수증 텍스트 파싱 함수
 function parseReceiptText(text) {
-    const lines = text.split('\n');
+    const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
 
-    // 날짜 찾기 (YYYY-MM-DD, YYYY.MM.DD, YY-MM-DD 등)
-    let date = new Date().toISOString().split('T')[0]; // 기본값: 오늘
-    const datePatterns = [
-        /(\d{4})[-.\/년](\d{1,2})[-.\/월](\d{1,2})[일]?/,
-        /(\d{2})[-.\/년](\d{1,2})[-.\/월](\d{1,2})[일]?/
-    ];
+    // === 날짜 찾기 ===
+    let date = new Date().toISOString().split('T')[0];
 
+    // 우선순위 1: "거래일시", "승인일시" 키워드
     for (const line of lines) {
-        for (const pattern of datePatterns) {
-            const match = line.match(pattern);
-            if (match) {
-                let year = match[1];
-                if (year.length === 2) {
-                    year = '20' + year;
-                }
-                const month = match[2].padStart(2, '0');
-                const day = match[3].padStart(2, '0');
+        if (line.includes('거래일시') || line.includes('승인일시')) {
+            const dateMatch = line.match(/(\d{4})[-.\/년](\d{1,2})[-.\/월](\d{1,2})/);
+            if (dateMatch) {
+                const year = dateMatch[1];
+                const month = dateMatch[2].padStart(2, '0');
+                const day = dateMatch[3].padStart(2, '0');
                 date = `${year}-${month}-${day}`;
+                console.log(`날짜 찾음 (거래일시): ${date}`);
                 break;
             }
         }
     }
 
-    // 상호명 찾기 (보통 첫 줄 또는 두 번째 줄)
-    let store = '미상';
-    for (let i = 0; i < Math.min(5, lines.length); i++) {
-        const line = lines[i].trim();
-        // 너무 짧거나 긴 줄 제외, 숫자만 있는 줄 제외
-        if (line.length > 2 && line.length < 30 &&
-            !line.match(/^\d+$/) &&
-            !line.includes('영수증') &&
-            !line.includes('receipt')) {
-            store = line;
-            break;
-        }
-    }
+    // 우선순위 2: 일반 날짜 패턴
+    if (date === new Date().toISOString().split('T')[0]) {
+        const datePatterns = [
+            /(\d{4})[-.\/년\s](\d{1,2})[-.\/월\s](\d{1,2})[일]?/,
+            /(\d{2})[-.\/년\s](\d{1,2})[-.\/월\s](\d{1,2})[일]?/
+        ];
 
-    // 금액 찾기 (합계, 총액, total 등의 키워드 근처)
-    let amount = 0;
-    const amountKeywords = ['합계', '총액', '총계', 'total', '받을금액', '카드금액', '승인금액'];
+        for (const line of lines) {
+            for (const pattern of datePatterns) {
+                const match = line.match(pattern);
+                if (match) {
+                    let year = match[1];
+                    if (year.length === 2) {
+                        year = '20' + year;
+                    }
+                    const month = match[2].padStart(2, '0');
+                    const day = match[3].padStart(2, '0');
 
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].toLowerCase();
-        const hasKeyword = amountKeywords.some(keyword => line.includes(keyword));
-
-        if (hasKeyword || line.includes('₩') || line.includes('원')) {
-            // 현재 줄 또는 다음 줄에서 금액 찾기
-            const searchLines = [lines[i], lines[i + 1], lines[i + 2]].filter(Boolean);
-            for (const searchLine of searchLines) {
-                // 콤마가 있는 숫자 또는 연속된 숫자 찾기
-                const amountMatch = searchLine.match(/(\d{1,3}(?:,\d{3})+|\d{4,})/);
-                if (amountMatch) {
-                    const foundAmount = parseInt(amountMatch[1].replace(/,/g, ''));
-                    // 너무 작거나 큰 금액 제외 (100원 ~ 1000만원)
-                    if (foundAmount >= 100 && foundAmount < 10000000 && foundAmount > amount) {
-                        amount = foundAmount;
+                    // 유효한 날짜인지 확인
+                    if (parseInt(month) >= 1 && parseInt(month) <= 12 &&
+                        parseInt(day) >= 1 && parseInt(day) <= 31) {
+                        date = `${year}-${month}-${day}`;
+                        console.log(`날짜 찾음 (패턴): ${date}`);
+                        break;
                     }
                 }
             }
         }
     }
 
-    // 카테고리 추정 (상호명 기반)
+    // === 상호명 찾기 ===
+    let store = '미상';
+
+    // 우선순위 1: "가맹점", "상호" 키워드
+    for (const line of lines) {
+        if (line.includes('가맹점') || line.includes('상호')) {
+            const match = line.match(/가맹점[:\s]*(.+)|상호[:\s]*(.+)/);
+            if (match) {
+                store = (match[1] || match[2]).trim();
+                console.log(`상호 찾음 (키워드): ${store}`);
+                break;
+            }
+        }
+    }
+
+    // 우선순위 2: 첫 5줄에서 찾기
+    if (store === '미상') {
+        for (let i = 0; i < Math.min(5, lines.length); i++) {
+            const line = lines[i];
+            if (line.length > 2 && line.length < 30 &&
+                !line.match(/^\d+$/) &&
+                !line.includes('영수증') &&
+                !line.includes('receipt') &&
+                !line.includes('신용승인') &&
+                !line.includes('고객용') &&
+                !line.includes('단말기') &&
+                !line.match(/\d{4}[-.\/]/)) {
+                store = line;
+                console.log(`상호 찾음 (첫 줄): ${store}`);
+                break;
+            }
+        }
+    }
+
+    // === 금액 찾기 ===
+    let amount = 0;
+    const amountKeywords = ['합계', '총액', '총계', 'total', '받을금액', '카드금액', '승인금액', '결제금액', '지불액'];
+
+    // 우선순위 1: "합" + "계" 분리된 경우
+    for (let i = 0; i < lines.length; i++) {
+        const currentLine = lines[i];
+        const nextLine = lines[i + 1] || '';
+        const nextNextLine = lines[i + 2] || '';
+
+        if (currentLine === '합' && nextLine === '계') {
+            const amountMatch = nextNextLine.match(/(\d{1,3}(?:,\d{3})+|\d{4,6})/);
+            if (amountMatch) {
+                amount = parseInt(amountMatch[1].replace(/,/g, ''));
+                console.log(`금액 찾음 (합/계 분리): ${amount}`);
+                break;
+            }
+        }
+
+        // 키워드가 있는 경우
+        const hasKeyword = amountKeywords.some(keyword => currentLine.includes(keyword));
+        if (hasKeyword) {
+            const sameLineMatch = currentLine.match(/(\d{1,3}(?:,\d{3})+|\d{4,6})/);
+            if (sameLineMatch) {
+                amount = parseInt(sameLineMatch[1].replace(/,/g, ''));
+                console.log(`금액 찾음 (키워드 같은 줄): ${amount}`);
+                break;
+            }
+
+            const nextLineMatch = nextLine.match(/(\d{1,3}(?:,\d{3})+|\d{4,6})/);
+            if (nextLineMatch) {
+                amount = parseInt(nextLineMatch[1].replace(/,/g, ''));
+                console.log(`금액 찾음 (키워드 다음 줄): ${amount}`);
+                break;
+            }
+        }
+    }
+
+    // 우선순위 2: "원" 근처
+    if (amount === 0) {
+        for (const line of lines) {
+            if (line.includes('원') && !line.includes('요일') && !line.includes('월')) {
+                const wonMatch = line.match(/(\d{1,3}(?:,\d{3})+|\d{4,6})\s*원/);
+                if (wonMatch) {
+                    amount = parseInt(wonMatch[1].replace(/,/g, ''));
+                    console.log(`금액 찾음 (원): ${amount}`);
+                    break;
+                }
+            }
+        }
+    }
+
+    // 우선순위 3: 마지막 10줄
+    if (amount === 0) {
+        for (let i = lines.length - 1; i >= Math.max(0, lines.length - 10); i--) {
+            const line = lines[i];
+
+            if (line.startsWith('*')) continue;
+            if (line.includes('-') && line.match(/\d{3}-\d{2}-\d{5}/)) continue;
+            if (line.match(/^[*]?\d{10,}/)) continue;
+
+            const commaMatch = line.match(/(\d{1,3}(?:,\d{3})+)/);
+            if (commaMatch) {
+                const num = parseInt(commaMatch[1].replace(/,/g, ''));
+                if (num >= 1000 && num < 1000000 && num > amount) {
+                    amount = num;
+                    console.log(`금액 찾음 (마지막): ${amount}`);
+                }
+            }
+        }
+    }
+
+    // === 카테고리 추정 ===
     const category = categorizeByStore(store, text);
 
-    // 결제수단 추정
+    // === 결제수단 ===
     let payment = '카드';
     const textLower = text.toLowerCase();
     if (textLower.includes('현금') || textLower.includes('cash')) {
@@ -201,7 +282,6 @@ function parseReceiptText(text) {
     return { date, store, amount, category, payment };
 }
 
-// 상호명으로 카테고리 추정
 function categorizeByStore(store, fullText) {
     const combinedText = (store + ' ' + fullText).toLowerCase();
 
@@ -209,45 +289,25 @@ function categorizeByStore(store, fullText) {
         '식비': [
             '마트', '마켓', '슈퍼', '식당', '음식점', '카페', '커피', '베이커리',
             '치킨', '피자', '버거', '맥도날드', '롯데리아', '버거킹', 'kfc',
-            '편의점', 'cu', 'gs25', '세븐일레븐', '7-eleven', 'mini stop',
+            '편의점', 'cu', 'gs25', '세븐일레븐', '7-eleven',
             '이마트', '롯데마트', '홈플러스', '코스트코', '쿠팡',
             '배달', '요기요', '배달의민족', '쿠팡이츠',
-            '스타벅스', '투썸', '이디야', '카페베네', '할리스',
-            '김밥', '떡볶이', '분식', '족발', '보쌈', '찜닭', '삼겹살'
+            '스타벅스', '투썸', '이디야', '할리스', '탕'
         ],
         '교통': [
-            '주유소', 'sk', 'gs칼텍스', '현대오일', 's-oil', '에쓰오일',
-            '택시', '카카오택시', '우버', '타다',
-            '버스', '지하철', '전철', '교통카드',
-            '주차', '주차장', '파킹',
-            '톨게이트', '통행료', '하이패스'
+            '주유소', 'sk', 'gs칼텍스', '현대오일', 's-oil',
+            '택시', '카카오택시', '버스', '지하철', '전철',
+            '주차', '주차장', '파킹', '톨게이트', '통행료'
         ],
         '쇼핑': [
-            '옷', '의류', '패션', '신발', '구두', '운동화', '스니커즈',
-            '가방', '백화점', '아울렛',
-            '화장품', '올리브영', '세포라', '롭스',
-            '다이소', '다이소',
-            '온라인', '쿠팡', '11번가', '지마켓', 'g마켓',
-            '무신사', '에이블리'
+            '옷', '의류', '패션', '신발', '가방', '백화점', '아울렛',
+            '화장품', '올리브영', '다이소', '쿠팡', '지마켓', '무신사'
         ],
         '생활': [
-            '약국', '약', '드럭스토어',
-            '병원', '의원', '한의원', '치과', '안과', '내과',
-            '세탁', '세탁소', '빨래방',
-            '미용실', '헤어샵', '네일샵', '피부과',
-            '클리닉', '동물병원'
+            '약국', '병원', '의원', '치과', '세탁', '미용실', '헤어샵'
         ],
         '여가': [
-            '영화', 'cgv', '롯데시네마', '메가박스',
-            '노래방', '코인노래방',
-            'pc방', '피시방', '게임', '오락실',
-            '헬스', '헬스장', '체육관', '피트니스', '요가',
-            '볼링', '당구', '탁구', '수영장'
-        ],
-        '교육': [
-            '서점', '교보문고', '영풍문고',
-            '학원', '교습소', '과외',
-            '문구', '문구점', '필기구'
+            '영화', 'cgv', '롯데시네마', '메가박스', '노래방', 'pc방', '헬스'
         ]
     };
 
