@@ -176,12 +176,32 @@ function parseReceiptText(text) {
         }
     }
 
-    // 우선순위 2: 첫 5줄에서 찾기
+    // 우선순위 2: 상호 관련 키워드가 있는 줄 (마트, 점, 식당 등)
+    if (store === '미상') {
+        const storeKeywords = ['마트', '점', '식당', '카페', '커피', '치킨', '피자', '버거', '약국', '병원', '편의점'];
+        for (let i = 0; i < Math.min(10, lines.length); i++) {
+            const line = lines[i];
+            const hasStoreKeyword = storeKeywords.some(keyword => line.includes(keyword));
+
+            if (hasStoreKeyword &&
+                line.length > 3 &&
+                line.length < 50 &&
+                !line.match(/\d{3}-\d{2}-\d{5}/) &&  // 사업자번호 제외
+                !line.match(/TEL|전화|연락처/i)) {
+                store = line;
+                console.log(`상호 찾음 (키워드 포함): ${store}`);
+                break;
+            }
+        }
+    }
+
+    // 우선순위 3: 첫 5줄에서 찾기
     if (store === '미상') {
         for (let i = 0; i < Math.min(5, lines.length); i++) {
             const line = lines[i];
             if (line.length > 2 && line.length < 30 &&
                 !line.match(/^\d+$/) &&
+                !line.match(/\d{3}-\d{2}-\d{5}/) &&  // 사업자번호 형식 제외
                 !line.includes('영수증') &&
                 !line.includes('receipt') &&
                 !line.includes('신용승인') &&
