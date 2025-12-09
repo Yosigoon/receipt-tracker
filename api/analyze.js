@@ -23,38 +23,60 @@ module.exports = async (req, res) => {
     }
 
     try {
-        // 1. 파일 파싱
-        const form = formidable({ multiples: false });
-        const [fields, files] = await new Promise((resolve, reject) => {
+        // 1. 파일 파싱 - formidable v3 방식
+        const form = new formidable.IncomingForm({
+            multiples: false,
+            keepExtensions: true
+        });
+
+        const { fields, files } = await new Promise((resolve, reject) => {
             form.parse(req, (err, fields, files) => {
-                if (err) reject(err);
-                resolve([fields, files]);
+                if (err) {
+                    console.error('Formidable parse error:', err);
+                    reject(err);
+                }
+                console.log('Files received:', Object.keys(files));
+                resolve({ fields, files });
             });
         });
 
-        const receiptFile = files.receipt;
+        // formidable v3에서는 배열로 반환됨
+        const receiptFile = Array.isArray(files.receipt) ? files.receipt[0] : files.receipt;
         if (!receiptFile) {
+            console.error('No receipt file found:', files);
             return res.status(400).json({ error: '영수증 이미지가 필요합니다.' });
         }
 
+        console.log('Receipt file:', receiptFile.filepath || receiptFile.path);
+
         // 2. Google Vision API로 OCR 수행
         const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+        console.log('Credentials loaded, project:', credentials.project_id);
         const client = new vision.ImageAnnotatorClient({
             credentials: credentials
         });
 
-        const imageBuffer = fs.readFileSync(receiptFile.filepath);
+        // formidable v3에서는 filepath 대신 path 사용 가능
+        const filePath = receiptFile.filepath || receiptFile.path;
+        const imageBuffer = fs.readFileSync(filePath);
+        console.log('Image buffer size:', imageBuffer.length);
+
         const [result] = await client.textDetection(imageBuffer);
+        console.log('Vision API response received');
         const detections = result.textAnnotations;
 
         if (!detections || detections.length === 0) {
+            console.error('No text detected in image');
             return res.status(400).json({ error: '영수증에서 텍스트를 인식할 수 없습니다.' });
         }
 
         const fullText = detections[0].description;
+        console.log('Detected text length:', fullText.length);
+        console.log('Detected text preview:', fullText.substring(0, 200));
 
         // 3. 텍스트 파싱 (간단한 규칙 기반)
         const receiptData = parseReceiptText(fullText);
+        console.log('Parsed receipt data:', receiptData);
 
         // 4. Google Sheets에 데이터 추가
         const auth = new google.auth.GoogleAuth({
@@ -79,6 +101,8 @@ module.exports = async (req, res) => {
                 ]],
             },
         });
+
+        console.log('Successfully added to sheet');
 
         // 5. 성공 응답
         res.status(200).json({

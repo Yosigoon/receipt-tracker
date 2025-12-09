@@ -3,12 +3,13 @@
   "version": "1.0.0",
   "description": "영수증 자동 가계부",
   "main": "index.html",
-  "scripts": {
-    "dev": "vercel dev"
-  },
+  "scripts": {},
   "dependencies": {
     "@google-cloud/vision": "^4.0.0",
     "googleapis": "^128.0.0",
     "formidable": "^3.5.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
