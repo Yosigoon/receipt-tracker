@@ -403,7 +403,7 @@ git push -u origin main
 ### 1단계: Vercel 로그인
 
 1. https://vercel.com 접속
-2. **"Sign Up"** → **GitHub 계정으로 로그인**
+2. **"Sign Up"**
 
 또는 터미널:
 ```bash
@@ -457,7 +457,7 @@ Value: {"type":"service_account",...전체JSON...}
 Environments: ✅ Production, ✅ Preview, ✅ Development
 ```
 
-⚠️ **주의**: JSON 전체를 복사-붙여넣기 (줄바꿈 포함)
+⚠️ **주의**: JSON 전체를 복사-붙여넣기
 
 #### CLI 방식
 
@@ -635,23 +635,6 @@ npm init -y
 - [Google Sheets API](https://developers.google.com/sheets/api)
 - [Vercel 문서](https://vercel.com/docs)
 - [Node.js formidable](https://github.com/node-formidable/formidable)
-
----
-
-## 💬 지원
-
-문제가 발생하면:
-1. 로그 확인 (터미널 또는 Vercel 대시보드)
-2. [문제 해결](#문제-해결) 섹션 참고
-3. GitHub Issues에 질문
-
----
-
-## 📄 라이선스
-
-MIT License
-
----
 
 **🎉 축하합니다! 영수증 자동 가계부를 성공적으로 구축하셨습니다!**
 
