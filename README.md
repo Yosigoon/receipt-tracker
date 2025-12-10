@@ -272,7 +272,7 @@ GOOGLE_SERVICE_ACCOUNT=여기에_JSON_전체내용_입력
 
 **GOOGLE_SERVICE_ACCOUNT**:
 - 다운로드한 JSON 파일 전체 내용을 복사-붙여넣기
-- 줄바꿈 포함 그대로 붙여넣으면 됩니다
+- JSON 값을 한 줄로 변환하여 붙여넣으면 됩니다
 
 ### 3. package.json 수정
 
