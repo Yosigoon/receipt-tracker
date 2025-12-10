@@ -235,7 +235,7 @@ vercel --version
 
 ```
 receipt-tracker/
-├── .env                    # 환경변수 (Git 제외!)
+├── .env                   # 환경변수 (Git 제외!)
 ├── .gitignore             # Git 제외 목록
 ├── index.html             # 업로드 페이지
 ├── package.json           # 패키지 설정
@@ -314,8 +314,7 @@ mkdir api
 
 ### 6. 파일 다운로드
 
-프론트엔드(`index.html`)와 백엔드(`api/analyze.js`) 코드는 
-위의 아티팩트에서 복사하여 각각의 파일에 붙여넣으세요.
+프론트엔드(`index.html`)와 백엔드(`api/analyze.js`) 코드는 복사하여 각각의 파일에 붙여넣으세요.
 
 ---
 
