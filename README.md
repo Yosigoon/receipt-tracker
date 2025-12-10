@@ -1,4 +1,17 @@
+# 📸 영수증 자동 가계부 - 완벽 가이드
+
 영수증을 촬영하면 자동으로 구글 시트 가계부에 기록되는 시스템 구축 가이드입니다.
+
+## 📸 미리보기
+
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/76c51fd5-ee83-4a35-92eb-1b67e859fe4d" alt="영수증 업로드 화면" width="400"/>
+  <img src="https://github.com/user-attachments/assets/93b2dabc-376e-41f6-a70b-b021c2d74a1b" alt="구글 시트 자동 기록" width="400"/>
+</div>
+
+<div align="center">
+  <p><em>영수증 업로드 화면</em> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <em>구글 시트 자동 기록</em></p>
+</div>
 
 ---
 
@@ -15,10 +28,6 @@
 9. [Vercel 배포](#vercel-배포)
 10. [도메인 연결](#도메인-연결)
 11. [문제 해결](#문제-해결)
-
-<img width="500" height="398" alt="receipt_main" src="https://github.com/user-attachments/assets/76c51fd5-ee83-4a35-92eb-1b67e859fe4d" />
-<img width="500" height="498" alt="sheets" src="https://github.com/user-attachments/assets/93b2dabc-376e-41f6-a70b-b021c2d74a1b" />
-
 
 ---
 
